@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
+<title>LogicForge Studio — Digital Logic Simulator</title>
+<style>
+  :root { --ink:#0f172a; --muted:#64748b; --line:#e2e8f0; --acc:#2563eb; --bg:#f1f5f9; }
+  * { box-sizing:border-box; }
+  html,body { height:100%; margin:0; }
+  body { display:grid; grid-template-rows:auto 1fr auto; background:var(--bg); color:var(--ink);
+    font:13px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif; }
+  header { display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding:8px 12px; background:#fff; border-bottom:1px solid var(--line); }
+  .brand { font-size:16px; } .tag { color:var(--muted); font-size:12px; }
+  .tb { display:flex; flex-wrap:wrap; gap:6px; margin-left:auto; }
+  button, select, input { font:inherit; color:inherit; }
+  button { cursor:pointer; padding:5px 10px; background:#fff; border:1px solid #cbd5e1; border-radius:8px; }
+  button:hover:not(:disabled) { border-color:var(--acc); }
+  button:disabled { opacity:.45; cursor:default; }
+  button[aria-pressed="true"] { background:#dbeafe; border-color:var(--acc); }
+  button:focus-visible, input:focus-visible, select:focus-visible, svg:focus-visible { outline:3px solid #93c5fd; outline-offset:1px; }
+  main { display:grid; grid-template-columns:190px 1fr 230px; min-height:0; }
+  aside { overflow:auto; padding:10px; background:#fff; border:0 solid var(--line); }
+  #palette { border-right-width:1px; } #props { border-left-width:1px; }
+  aside h2 { margin:0 0 8px; font-size:14px; } aside h3 { margin:12px 0 5px; font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); }
+  .pi { display:block; width:100%; margin-bottom:4px; text-align:left; font-size:12px; }
+  .legend { margin-top:14px; font-size:11px; color:var(--muted); } .legend div { display:flex; align-items:center; gap:6px; margin:3px 0; }
+  .legend i { width:18px; height:4px; border-radius:2px; display:inline-block; }
+  .foot { margin-top:14px; font-size:10.5px; color:var(--muted); }
+  #props label { display:block; margin:8px 0; font-size:12px; color:var(--muted); }
+  #props label input:not([type=checkbox]), #props label select { display:block; width:100%; margin-top:3px; padding:5px 7px; border:1px solid #cbd5e1; border-radius:7px; color:var(--ink); }
+  #props .chk { display:flex; gap:6px; align-items:center; } .pt { font-weight:700; margin:0 0 4px; }
+  .btns { display:flex; gap:6px; margin-top:12px; } .hint { color:var(--muted); font-size:12px; } .hint li { margin:3px 0; } .note { font-size:11px; color:var(--muted); }
+  #stage { position:relative; min-width:0; min-height:0; }
+  #cv { display:block; width:100%; height:100%; background:#f8fafc; touch-action:none; user-select:none; }
+  #cv text { pointer-events:none; user-select:none; }
+  #banner { position:absolute; left:10px; right:10px; top:10px; display:none; padding:8px 12px; color:#7f1d1d; background:#fee2e2; border:1px solid #fca5a5; border-radius:10px; font-weight:600; }
+  #banner.on { display:block; }
+  footer#foot { display:flex; flex-wrap:wrap; justify-content:space-between; gap:6px 14px; padding:5px 12px; background:#fff; border-top:1px solid var(--line); color:var(--muted); font-size:12px; }
+  .fl { display:flex; flex-wrap:wrap; gap:4px 12px; }
+  .lk { padding:0; background:none; border:0; color:var(--acc); text-decoration:underline; font-size:12px; }
+  .body { fill:#fff; stroke:#111827; stroke-width:2; } .stub { stroke:#111827; stroke-width:2; } .ln { fill:none; stroke:#111827; stroke-width:2; }
+  .pn { font:9px system-ui,sans-serif; fill:#475569; } .ttl { font:bold 9px system-ui,sans-serif; fill:#0f172a; }
+  .lbl { font:600 11px system-ui,sans-serif; fill:#1e293b; } .big { font:bold 18px ui-monospace,Consolas,monospace; fill:#0f172a; }
+  .hexc { font:bold 34px ui-monospace,Consolas,monospace; fill:#0f172a; } .clk { fill:none; stroke:#111827; stroke-width:1.5; }
+  .hit { fill:transparent; cursor:grab; } .selbox { fill:rgba(37,99,235,.06); stroke:var(--acc); stroke-dasharray:4 3; }
+  .ph { fill:transparent; pointer-events:all; cursor:crosshair; } .ph:hover { fill:rgba(37,99,235,.28); }
+  .wp { fill:none; stroke-width:2.5; stroke-linejoin:round; } .wh { fill:none; stroke:transparent; stroke-width:12; pointer-events:stroke; cursor:pointer; }
+  .w0 .wp { stroke:#4b5563; } .w1 .wp { stroke:#16a34a; } .wX .wp { stroke:#f59e0b; stroke-dasharray:6 4; }
+  .wZ .wp { stroke:#2563eb; } .wR .wp { stroke:#dc2626; stroke-width:4; } .wsel .wp { filter:drop-shadow(0 0 3px #2563eb); }
+  .wprev { fill:none; stroke:var(--acc); stroke-width:2; stroke-dasharray:5 4; pointer-events:none; }
+  .rb { fill:rgba(37,99,235,.08); stroke:var(--acc); stroke-dasharray:4 3; pointer-events:none; }
+
+  /* legal center + consent notice */
+  #consent { position:fixed; left:10px; right:10px; bottom:42px; z-index:50; display:none; flex-wrap:wrap; align-items:center; gap:8px 14px; padding:10px 14px; background:#0f172a; color:#f8fafc; border-radius:12px; box-shadow:0 4px 20px rgb(15 23 42/35%); font-size:12.5px; }
+  #consent.on { display:flex; } #consent p { margin:0; flex:1 1 320px; } #consent .lk { color:#93c5fd; font-size:12.5px; }
+  #consent button.ok { background:#2563eb; color:#fff; border-color:#2563eb; font-weight:600; }
+  #legal { position:fixed; inset:0; z-index:100; display:none; align-items:center; justify-content:center; padding:12px; background:rgb(15 23 42/55%); }
+  #legal.on { display:flex; }
+  .dlg { display:flex; flex-direction:column; width:min(860px,100%); max-height:92vh; background:#fff; border-radius:14px; box-shadow:0 10px 40px rgb(15 23 42/40%); overflow:hidden; }
+  .dh { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 14px; border-bottom:1px solid var(--line); }
+  .dh h2 { margin:0; font-size:15px; }
+  .tabs { display:flex; flex-wrap:wrap; gap:4px; padding:8px 12px; border-bottom:1px solid var(--line); background:#f8fafc; }
+  .tabs button { font-size:12px; padding:4px 9px; }
+  .pane { padding:14px 18px; overflow:auto; line-height:1.55; }
+  .pane h3 { margin:16px 0 4px; font-size:13px; text-transform:none; letter-spacing:0; color:var(--ink); }
+  .pane h3:first-child { margin-top:0; } .pane p, .pane li { margin:5px 0; } .pane ul { padding-left:20px; }
+  .pane pre { white-space:pre-wrap; padding:10px; background:#f1f5f9; border-radius:8px; font:12px/1.5 ui-monospace,Consolas,monospace; }
+  .pane .upd { color:var(--muted); font-size:12px; } .pane .box { padding:8px 12px; background:#fef3c7; border:1px solid #fcd34d; border-radius:8px; }
+  .pane .danger { background:#fff; color:#b91c1c; border-color:#fca5a5; }
+  @media (max-width:900px) {
+    main { grid-template-columns:130px 1fr; }
+    #props { position:fixed; right:0; bottom:28px; width:220px; max-height:50vh; border:1px solid var(--line); border-radius:12px 0 0 0; box-shadow:0 2px 12px rgb(15 23 42/15%); }
+  }
+</style>
+</head>
+<body>
+<header>
+  <strong class="brand">LogicForge Studio</strong><span class="tag">Schematic &amp; simulation core</span>
+  <div class="tb" role="toolbar" aria-label="Main toolbar">
+    <button id="undo" title="Undo (Ctrl+Z)">↶ Undo</button>
+    <button id="redo" title="Redo (Ctrl+Y)">↷ Redo</button>
+    <button id="run" aria-pressed="false" title="Run all clock generators">▶ Run</button>
+    <button id="step" title="Toggle every clock once (half cycle)">Step ½ cycle</button>
+    <button id="reset" title="Reset all sequential state to X">Reset sim</button>
+    <button id="wire" title="Toggle wire routing style"></button>
+    <button id="snap" aria-pressed="true"></button>
+    <button id="panBtn" aria-pressed="false" title="Drag the canvas to pan (also: middle mouse, Alt or Space)"></button>
+    <button id="fit">Fit view</button>
+    <button id="del" title="Delete selection (Del)">Delete</button>
+    <button id="clear">Clear all</button>
+    <button id="legalBtn" title="Terms, privacy, licenses, accessibility">⚖ Legal</button>
+  </div>
+</header>
+<main>
+  <aside id="palette" aria-label="Component library"></aside>
+  <section id="stage">
+    <div id="banner" role="alert"></div>
+    <svg id="cv" tabindex="0" role="application" aria-label="Schematic canvas. Drag from a pin to another pin to create a wire.">
+      <defs><pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" fill="#cbd5e1"/></pattern></defs>
+      <rect width="100%" height="100%" fill="url(#grid)"/>
+      <g id="view"><g id="gw"></g><g id="gc"></g><g id="go"></g></g>
+    </svg>
+  </section>
+  <aside id="props" aria-label="Properties"></aside>
+</main>
+<footer id="foot">
+  <span id="status" aria-live="polite"></span>
+  <span class="fl" id="flinks"></span>
+</footer>
+
+<div id="consent" role="region" aria-label="Terms notice">
+  <p>This is an educational simulator provided “as is”, with no warranty. Circuits are stored only in your browser; nothing is sent to a server. By clicking “I agree” or continuing to use the site you accept the <button class="lk" data-l="terms">Terms of Use</button>, <button class="lk" data-l="disclaimer">Disclaimer</button> and <button class="lk" data-l="privacy">Privacy Notice</button>.</p>
+  <button class="ok" id="consentOk">I agree</button>
+</div>
+
+<div id="legal" role="dialog" aria-modal="true" aria-labelledby="legalTitle">
+  <div class="dlg">
+    <div class="dh"><h2 id="legalTitle">Legal &amp; Compliance Center</h2><button id="legalClose" aria-label="Close legal center">✕ Close</button></div>
+    <div class="tabs" role="tablist" id="legalTabs" aria-label="Legal documents"></div>
+    <div class="pane" id="legalPane" role="tabpanel" tabindex="0"></div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ============ EDIT THESE BEFORE PUBLISHING ============ */
+const LEGAL = {
+  site: "LogicForge Studio",
+  owner: "[Ivan Haieen]",
+  email: "[Ivanhaieen3@gmail.com]",
+  court: "[YOUR DISTRICT, e.g. Tel Aviv-Jaffa]",
+  updated: "2026-11-13",
+  version: 1
+};
+
+/* ============ constants & helpers ============ */
+const X = 2, Z = 3, GRID = 20;
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, m => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[m]));
+const nm = (p, n) => Array.from({ length: n }, (_, i) => p + i);
+const ch = v => v === 0 ? "0" : v === 1 ? "1" : v === X ? "X" : "Z";
+const col = v => v === 1 ? "#16a34a" : v === 0 ? "#374151" : v === X ? "#f59e0b" : "#2563eb";
+
+/* ============ component definitions ============ */
+const DEFS = {};
+function def(type, name, cat, ins, outs, p) { DEFS[type] = { name, cat, ins, outs, p: p || {} }; }
+const GATES = ["AND", "OR", "NAND", "NOR", "XOR", "XNOR"];
+const IO = "Input / Output", CG = "Combinational Gates", PA = "Plexers & Arithmetic", SQ = "Sequential";
+def("SWITCH", "Toggle Switch", IO, [], ["Q"], { v: 0 });
+def("BUTTON", "Push Button", IO, [], ["Q"]);
+def("CLOCK", "Clock Generator", IO, [], ["CLK"], { hz: 1 });
+def("HIGH", "Constant High (1)", IO, [], ["Q"]);
+def("LOW", "Constant Low (0)", IO, [], ["Q"]);
+def("LED", "LED Indicator", IO, ["A"], []);
+def("SEG7", "7-Segment Display", IO, p => p.dec ? nm("D", 4) : ["a","b","c","d","e","f","g"], [], { dec: 1 });
+def("HEX", "Hex Display", IO, nm("D", 4), []);
+GATES.forEach(g => def(g, g, CG, p => ["A","B","C","D"].slice(0, p.n), ["Y"], { n: 2 }));
+def("NOT", "NOT", CG, ["A"], ["Y"]);
+def("TRI", "Tri-State Buffer", CG, ["D","EN"], ["Y"]);
+def("MUX2", "2:1 Multiplexer", PA, ["D0","D1","S"], ["Y"]);
+def("MUX4", "4:1 Multiplexer", PA, ["D0","D1","D2","D3","S0","S1"], ["Y"]);
+def("DEMUX2", "1:2 Demultiplexer", PA, ["D","S"], ["Y0","Y1"]);
+def("DEMUX4", "1:4 Demultiplexer", PA, ["D","S0","S1"], nm("Y", 4));
+def("HA", "Half Adder", PA, ["A","B"], ["S","C"]);
+def("FA", "Full Adder", PA, ["A","B","CI"], ["S","CO"]);
+def("ALU", "4-bit ALU (00 add, 01 sub, 10 AND, 11 OR)", PA, [...nm("A",4), ...nm("B",4), "OP0","OP1"], [...nm("Y",4), "CO","Z"]);
+def("SR", "SR Latch", SQ, ["S","R"], ["Q","QN"]);
+def("DFF", "D Flip-Flop", SQ, ["D","CLK","RST","PRE"], ["Q","QN"], { edge: "rise" });
+def("JFF", "JK Flip-Flop", SQ, ["J","K","CLK","RST","PRE"], ["Q","QN"], { edge: "rise" });
+def("TFF", "T Flip-Flop", SQ, ["T","CLK","RST","PRE"], ["Q","QN"], { edge: "rise" });
+def("REG4", "4-bit Register", SQ, [...nm("D",4), "CLK","RST"], nm("Q", 4), { edge: "rise" });
+def("CNT4", "4-bit Sync Counter", SQ, ["CLK","EN","RST"], [...nm("Q",4), "CO"], { edge: "rise" });
+const CK = { DFF: 1, JFF: 2, TFF: 1, REG4: 4, CNT4: 0 };
+const TITLE = { MUX2:"2:1 MUX", MUX4:"4:1 MUX", DEMUX2:"1:2 DEMUX", DEMUX4:"1:4 DEMUX", HA:"HALF ADD", FA:"FULL ADD",
+  ALU:"ALU 4-BIT", SR:"SR LATCH", DFF:"D FF", JFF:"JK FF", TFF:"T FF", REG4:"REG 4", CNT4:"COUNTER" };
+const pins = (c, side) => { const d = DEFS[c.type], v = side ? d.outs : d.ins; return typeof v === "function" ? v(c.p) : v; };
+
+function layout(c) {
+  const t = c.type, I = pins(c, 0), O = pins(c, 1);
+  const colm = (a, x) => a.map((n, i) => ({ n, x, y: 20 * (i + 1) }));
+  let w, h, ins, outs;
+  if (GATES.includes(t) || t === "NOT") { w = 60; h = 20 * (I.length + 1); ins = colm(I, 0); outs = [{ n: "Y", x: 60, y: h / 2 }]; }
+  else if (t === "TRI") { w = 60; h = 60; ins = colm(I, 0); outs = [{ n: "Y", x: 60, y: 30 }]; }
+  else if (t === "SWITCH" || t === "BUTTON") { w = 60; h = 40; ins = []; outs = [{ n: "Q", x: 60, y: 20 }]; }
+  else if (t === "CLOCK") { w = 80; h = 40; ins = []; outs = [{ n: "CLK", x: 80, y: 20 }]; }
+  else if (t === "HIGH" || t === "LOW") { w = 40; h = 40; ins = []; outs = [{ n: "Q", x: 40, y: 20 }]; }
+  else if (t === "LED") { w = 44; h = 40; ins = [{ n: "A", x: 0, y: 20 }]; outs = []; }
+  else if (t === "SEG7" || t === "HEX") { w = 90; h = 20 * (I.length + 1); ins = colm(I, 0); outs = []; }
+  else { w = 110; h = 20 * (Math.max(I.length, O.length) + 1); ins = colm(I, 0); outs = colm(O, 110); }
+  return { w, h, ins, outs };
+}
+
+/* ============ model, selection, sim state ============ */
+let M = { comps: [], wires: [], nid: 1 };
+const idx = { by: new Map(), inW: new Map() };
+const S = { sel: new Set(), selW: new Set(), ortho: true, snap: true, pan: false, view: { x: 40, y: 40, k: 1 }, running: false, msg: "" };
+const sim = { out: {}, st: {}, prev: {}, osc: new Set(), cont: new Set() };
+const H = { stack: [], i: -1 };
+const single = () => S.sel.size === 1 ? idx.by.get([...S.sel][0]) : null;
+const nameOf = c => c.p.label || (DEFS[c.type].name.split(" (")[0] + " #" + c.id);
+
+function rebuild() {
+  idx.by = new Map(M.comps.map(c => [c.id, c]));
+  idx.inW = new Map();
+  for (const w of M.wires) { const k = w.t[0] + ":" + w.t[1]; if (!idx.inW.has(k)) idx.inW.set(k, []); idx.inW.get(k).push(w); }
+}
+function newState(c) {
+  if (c.type === "REG4" || c.type === "CNT4") return { q: [X, X, X, X] };
+  if (c.type === "CLOCK") return { lvl: 0, acc: 0 };
+  if (c.type === "BUTTON") return { down: 0 };
+  return { q: X };
+}
+function ensureSim(c) {
+  const n = pins(c, 1).length;
+  if (!sim.out[c.id] || sim.out[c.id].length !== n) sim.out[c.id] = Array(n).fill(X);
+  if (!sim.st[c.id]) sim.st[c.id] = newState(c);
+}
+
+/* ============ 4-valued logic ============ */
+const nz = v => v === Z ? X : v;
+const z0 = v => v === Z ? 0 : v;
+const and = a => { let x = 0; for (let v of a) { v = nz(v); if (v === 0) return 0; if (v === X) x = 1; } return x ? X : 1; };
+const or = a => { let x = 0; for (let v of a) { v = nz(v); if (v === 1) return 1; if (v === X) x = 1; } return x ? X : 0; };
+const not = v => { v = nz(v); return v === X ? X : 1 - v; };
+const xor = a => { let r = 0; for (let v of a) { v = nz(v); if (v === X) return X; r ^= v; } return r; };
+const num = a => { let n = 0; for (let i = 0; i < a.length; i++) { if (a[i] > 1) return -1; n |= a[i] << i; } return n; };
+const bits = (n, w) => Array.from({ length: w }, (_, i) => (n >> i) & 1);
+const same4 = a => { const f = nz(a[0]); return f < 2 && a.every(v => nz(v) === f) ? f : X; };
+
+function resolve(c, i, track) {
+  const ws = idx.inW.get(c.id + ":" + i);
+  if (!ws) return Z;
+  let v = Z, clash = false;
+  for (const w of ws) {
+    const d = (sim.out[w.f[0]] || [])[w.f[1]], dv = d === undefined ? X : d;
+    if (dv === Z) continue;
+    if (v === Z) v = dv;
+    else if (v !== dv) { if (v < 2 && dv < 2) clash = true; v = X; }
+  }
+  if (clash && track) ws.forEach(w => sim.cont.add(w.id));
+  return v;
+}
+function readIns(c, track) {
+  const n = pins(c, 0).length, r = new Array(n);
+  for (let i = 0; i < n; i++) r[i] = resolve(c, i, track);
+  return r;
+}
+function asyncCtl(st, rst, pre) { if (rst === 1) st.q = 0; else if (pre === 1) st.q = 1; }
+
+function evalComp(c, I) {
+  const t = c.type, st = sim.st[c.id];
+  switch (t) {
+    case "SWITCH": return [c.p.v ? 1 : 0];
+    case "BUTTON": return [st.down ? 1 : 0];
+    case "CLOCK": return [st.lvl];
+    case "HIGH": return [1];
+    case "LOW": return [0];
+    case "AND": return [and(I)];
+    case "OR": return [or(I)];
+    case "NAND": return [not(and(I))];
+    case "NOR": return [not(or(I))];
+    case "XOR": return [xor(I)];
+    case "XNOR": return [not(xor(I))];
+    case "NOT": return [not(I[0])];
+    case "TRI": { const e = I[1]; return [e === 1 ? nz(I[0]) : (e === 0 || e === Z) ? Z : X]; }
+    case "MUX2": { const s = I[2]; return [s === 0 || s === 1 ? nz(I[s]) : same4([I[0], I[1]])]; }
+    case "MUX4": { const s = num([I[4], I[5]]); return [s >= 0 ? nz(I[s]) : same4(I.slice(0, 4))]; }
+    case "DEMUX2": { const s = num([I[1]]); if (s < 0) return [X, X]; const d = nz(I[0]); return [s === 0 ? d : 0, s === 1 ? d : 0]; }
+    case "DEMUX4": { const s = num([I[1], I[2]]); if (s < 0) return [X, X, X, X]; const d = nz(I[0]); return [0, 1, 2, 3].map(i => i === s ? d : 0); }
+    case "HA": return [xor([I[0], I[1]]), and([I[0], I[1]])];
+    case "FA": { const ab = xor([I[0], I[1]]); return [xor([ab, I[2]]), or([and([I[0], I[1]]), and([I[2], ab])])]; }
+    case "ALU": {
+      const op = num([I[8], I[9]]);
+      if (op < 0) return Array(6).fill(X);
+      const A = I.slice(0, 4), B = I.slice(4, 8);
+      const zero = Y => Y.some(v => v > 1) ? X : (Y.every(v => v === 0) ? 1 : 0);
+      if (op >= 2) { const Y = A.map((a, i) => op === 2 ? and([a, B[i]]) : or([a, B[i]])); return [...Y, 0, zero(Y)]; }
+      const a = num(A), b = num(B);
+      if (a < 0 || b < 0) return Array(6).fill(X);
+      const r = op === 0 ? a + b : a - b, Y = bits(r & 15, 4);
+      return [...Y, op === 0 ? (r > 15 ? 1 : 0) : (a >= b ? 1 : 0), zero(Y)];
+    }
+    case "SR": {
+      const s = z0(I[0]), r = z0(I[1]);
+      if (s === X || r === X || (s === 1 && r === 1)) st.q = X; else if (s === 1) st.q = 1; else if (r === 1) st.q = 0;
+      return [st.q, not(st.q)];
+    }
+    case "DFF": case "TFF": asyncCtl(st, I[2], I[3]); return [st.q, not(st.q)];
+    case "JFF": asyncCtl(st, I[3], I[4]); return [st.q, not(st.q)];
+    case "REG4": if (I[5] === 1) st.q = [0, 0, 0, 0]; return st.q.slice();
+    case "CNT4": { if (I[2] === 1) st.q = [0, 0, 0, 0]; const en = I[1] === Z ? 1 : I[1]; return [...st.q, and([en, ...st.q])]; }
+    default: return [];
+  }
+}
+
+function clockStep(c, I) {
+  const st = sim.st[c.id], t = c.type;
+  if (t === "DFF") { if (I[2] === 1 || I[3] === 1) return; st.q = nz(I[0]); }
+  else if (t === "TFF") { if (I[2] === 1 || I[3] === 1) return; const v = nz(I[0]); st.q = v === X ? X : v === 1 ? not(st.q) : st.q; }
+  else if (t === "JFF") {
+    if (I[3] === 1 || I[4] === 1) return;
+    const j = nz(I[0]), k = nz(I[1]);
+    if (j === X || k === X) st.q = X; else if (j && k) st.q = not(st.q); else if (j) st.q = 1; else if (k) st.q = 0;
+  }
+  else if (t === "REG4") { if (I[5] === 1) return; st.q = I.slice(0, 4).map(nz); }
+  else if (t === "CNT4") {
+    if (I[2] === 1) return;
+    const en = I[1] === Z ? 1 : I[1];
+    if (en === X) st.q = [X, X, X, X];
+    else if (en === 1) { const n = num(st.q); st.q = n < 0 ? [X, X, X, X] : bits((n + 1) & 15, 4); }
+  }
+}
+function phaseB() {
+  const fire = [];
+  for (const c of M.comps) {
+    const ci = CK[c.type];
+    if (ci === undefined) continue;
+    const I = readIns(c, false), clk = I[ci], pv = sim.prev[c.id];
+    sim.prev[c.id] = clk;
+    const edge = c.p.edge === "fall" ? (pv === 1 && clk === 0) : (pv === 0 && clk === 1);
+    if (pv !== undefined && edge) fire.push([c, I]);
+  }
+  fire.forEach(([c, I]) => clockStep(c, I));
+  return fire.map(f => f[0].id);
+}
+
+function settle() {
+  sim.osc = new Set(); sim.cont = new Set();
+  M.comps.forEach(ensureSim);
+  let rounds = 0, bad = null;
+  for (;;) {
+    let pass = 0, changed;
+    do {
+      changed = []; pass++;
+      for (const c of M.comps) {
+        const o = evalComp(c, readIns(c, false)), old = sim.out[c.id];
+        if (o.some((v, i) => v !== old[i])) { sim.out[c.id] = o; changed.push(c.id); }
+      }
+    } while (changed.length && pass < 64);
+    if (changed.length) { bad = changed; break; }
+    const fired = phaseB();
+    if (!fired.length) break;
+    if (++rounds > 200) { bad = fired; break; }
+  }
+  if (bad) { sim.osc = new Set(bad); bad.forEach(id => { sim.out[id] = sim.out[id].map(() => X); }); stopRun(); }
+  M.comps.forEach(c => readIns(c, true));
+}
+
+/* ============ clocks / run control ============ */
+let timer = null, lastT = 0;
+function startRun() { if (timer) return; S.running = true; lastT = performance.now(); timer = setInterval(tick, 20); updateUI(); }
+function stopRun() { if (timer) { clearInterval(timer); timer = null; } S.running = false; updateUI(); }
+function tick() {
+  const now = performance.now(), dt = now - lastT; lastT = now;
+  let ch2 = false;
+  for (const c of M.comps) {
+    if (c.type !== "CLOCK" || !(c.p.hz > 0)) continue;
+    ensureSim(c);
+    const st = sim.st[c.id], half = 500 / c.p.hz;
+    st.acc += dt;
+    if (st.acc >= half) { st.acc %= half; st.lvl ^= 1; ch2 = true; }
+  }
+  if (ch2) { settle(); render(); }
+}
+function stepHalf() {
+  const cl = M.comps.filter(c => c.type === "CLOCK");
+  if (!cl.length) { setMsg("Add a Clock Generator first."); return; }
+  cl.forEach(c => { ensureSim(c); sim.st[c.id].lvl ^= 1; });
+  settle(); render();
+}
+function resetSim() {
+  sim.out = {}; sim.st = {}; sim.prev = {};
+  settle(); render(); setMsg("Simulation state reset (sequential parts are X until initialised).");
+}
+
+/* ============ history, persistence, validation ============ */
+const KEY = "logicforge.workspace.v1", CKEY = "logicforge.consent.v1";
+const snapJSON = () => JSON.stringify({ comps: M.comps, wires: M.wires, nid: M.nid });
+function save() { try { localStorage.setItem(KEY, snapJSON()); } catch (_) { /* storage unavailable */ } }
+function commit() {
+  const s = snapJSON();
+  if (H.stack[H.i] === s) { save(); updateUI(); return; }
+  H.stack = H.stack.slice(0, H.i + 1); H.stack.push(s);
+  if (H.stack.length > 200) H.stack.shift();
+  H.i = H.stack.length - 1;
+  save(); updateUI();
+}
+function restore(s) {
+  const keep = {};
+  M.comps.forEach(c => { if (c.type === "SWITCH") keep[c.id] = c.p.v; });
+  M = JSON.parse(s);
+  M.comps.forEach(c => { if (c.type === "SWITCH" && c.id in keep) c.p.v = keep[c.id]; });
+  S.sel = new Set([...S.sel].filter(i => M.comps.some(c => c.id === i)));
+  S.selW = new Set([...S.selW].filter(i => M.wires.some(w => w.id === i)));
+  rebuild(); settle(); render(); buildProps(); save();
+}
+const undo = () => { if (H.i > 0) { H.i--; restore(H.stack[H.i]); } };
+const redo = () => { if (H.i < H.stack.length - 1) { H.i++; restore(H.stack[H.i]); } };
+
+function sanitize(m) {
+  if (!m || typeof m !== "object" || !Array.isArray(m.comps) || !Array.isArray(m.wires)) return null;
+  const ids = new Set(), comps = [];
+  for (const c of m.comps) {
+    if (!c || !Object.prototype.hasOwnProperty.call(DEFS, c.type) || !Number.isFinite(c.x) || !Number.isFinite(c.y) || !Number.isInteger(c.id) || ids.has(c.id)) return null;
+    ids.add(c.id);
+    const src = c.p && typeof c.p === "object" ? c.p : {}, p = {};
+    for (const k of Object.keys(DEFS[c.type].p)) p[k] = k in src ? src[k] : DEFS[c.type].p[k];
+    if (typeof src.label === "string") p.label = src.label.slice(0, 24);
+    if ("n" in p) p.n = Math.min(4, Math.max(2, Math.round(+p.n) || 2));
+    if ("hz" in p) p.hz = Math.min(20, Math.max(0, +p.hz || 0));
+    if ("edge" in p) p.edge = p.edge === "fall" ? "fall" : "rise";
+    if ("v" in p) p.v = p.v ? 1 : 0;
+    if ("dec" in p) p.dec = p.dec ? 1 : 0;
+    comps.push({ id: c.id, type: c.type, x: c.x, y: c.y, p });
+  }
+  const by = new Map(comps.map(c => [c.id, c]));
+  let nid = Math.max(0, ...comps.map(c => c.id)) + 1;
+  const wires = [], seen = new Set();
+  for (const w of m.wires) {
+    if (!w || !Array.isArray(w.f) || !Array.isArray(w.t)) return null;
+    const a = by.get(w.f[0]), b = by.get(w.t[0]);
+    if (!a || !b || !Number.isInteger(w.f[1]) || !Number.isInteger(w.t[1])) continue;
+    if (w.f[1] < 0 || w.f[1] >= pins(a, 1).length || w.t[1] < 0 || w.t[1] >= pins(b, 0).length) continue;
+    const key = w.f.join(":") + ">" + w.t.join(":");
+    if (seen.has(key)) continue;
+    seen.add(key); wires.push({ id: nid++, f: [a.id, w.f[1]], t: [b.id, w.t[1]] });
+  }
+  return { comps, wires, nid };
+}
+function loadSaved() { try { return sanitize(JSON.parse(localStorage.getItem(KEY))); } catch (_) { return null; } }
+function prune() {
+  M.wires = M.wires.filter(w => {
+    const a = idx.by.get(w.f[0]), b = idx.by.get(w.t[0]);
+    return a && b && w.f[1] < pins(a, 1).length && w.t[1] < pins(b, 0).length;
+  });
+}
+
+function demo() {
+  const m = { comps: [], wires: [], nid: 1 };
+  const add = (type, x, y, p) => { const c = { id: m.nid++, type, x, y, p: Object.assign({}, DEFS[type].p, p || {}) }; m.comps.push(c); return c.id; };
+  const link = (a, i, b, j) => m.wires.push({ id: m.nid++, f: [a, i], t: [b, j] });
+  const a = add("SWITCH", 40, 60, { label: "A", v: 1 }), b = add("SWITCH", 40, 160, { label: "B", v: 0 });
+  const x = add("XOR", 220, 80), n = add("AND", 220, 180);
+  const l1 = add("LED", 380, 90, { label: "Sum" }), l2 = add("LED", 380, 190, { label: "Carry" });
+  link(a, 0, x, 0); link(b, 0, x, 1); link(a, 0, n, 0); link(b, 0, n, 1); link(x, 0, l1, 0); link(n, 0, l2, 0);
+  const ck = add("CLOCK", 40, 320, { label: "1 Hz clock", hz: 1 }), hi = add("HIGH", 40, 400);
+  const rs = add("SWITCH", 40, 460, { label: "RST (turn off, then Run)", v: 1 });
+  const t = add("TFF", 220, 320, { label: "÷2 (T flip-flop)" }), l3 = add("LED", 400, 330, { label: "Q" });
+  link(ck, 0, t, 1); link(hi, 0, t, 0); link(rs, 0, t, 2); link(t, 0, l3, 0);
+  return m;
+}
+
+/* ============ rendering ============ */
+const cv = $("#cv"), view = $("#view"), gw = $("#gw"), gc = $("#gc"), go = $("#go");
+const HX = "0123456789ABCDEF";
+const SEG = ["1111110","0110000","1101101","1111001","0110011","1011011","1011111","1110000","1111111","1111011","1110111","0011111","1001110","0111101","1001111","1000111"];
+
+function pinPos(c, side, i) { const p = (side ? layout(c).outs : layout(c).ins)[i]; return [c.x + p.x, c.y + p.y]; }
+function route(x1, y1, x2, y2) {
+  if (!S.ortho) { const d = Math.max(40, Math.abs(x2 - x1) / 2); return `M${x1},${y1}C${x1 + d},${y1} ${x2 - d},${y2} ${x2},${y2}`; }
+  if (x2 >= x1 + 20) { const m = Math.round((x1 + x2) / 2 / GRID) * GRID; return `M${x1},${y1}H${m}V${y2}H${x2}`; }
+  const ym = Math.abs(y2 - y1) < 2 ? y1 + 50 : (y1 + y2) / 2;
+  return `M${x1},${y1}H${x1 + 20}V${ym}H${x2 - 20}V${y2}H${x2}`;
+}
+function gateBody(t, g) {
+  const h = g.h, yt = 6, yb = h - 6, ym = h / 2;
+  const base = t === "NAND" ? "AND" : t === "NOR" ? "OR" : t === "XNOR" ? "XOR" : t;
+  let shape, end = 50, bub = t === "NAND" || t === "NOR" || t === "XNOR", extra = "";
+  if (base === "AND") shape = `M10,${yt}H26A24,${(yb - yt) / 2} 0 0 1 26,${yb}H10Z`;
+  else if (base === "NOT") { shape = `M10,${yt}L46,${ym}L10,${yb}Z`; end = 46; bub = true; }
+  else {
+    shape = `M10,${yt}Q38,${yt} 50,${ym}Q38,${yb} 10,${yb}Q24,${ym} 10,${yt}Z`;
+    if (base === "XOR") extra = `<path class="ln" d="M3,${yt}Q17,${ym} 3,${yb}"/>`;
+  }
+  const sx = base === "OR" ? 15.5 : base === "XOR" ? 9 : 10;
+  let s = `<path class="body" d="${shape}"/>${extra}`;
+  g.ins.forEach(p => { s += `<line class="stub" x1="0" y1="${p.y}" x2="${sx}" y2="${p.y}"/>`; });
+  if (bub) s += `<circle class="body" cx="${end + 4}" cy="${ym}" r="4"/>`;
+  return s + `<line class="stub" x1="${bub ? end + 8 : end}" y1="${ym}" x2="60" y2="${ym}"/>`;
+}
+function bodySVG(c, g, I) {
+  const t = c.type, st = sim.st[c.id] || {}, h = g.h;
+  if (GATES.includes(t) || t === "NOT") return gateBody(t, g);
+  const outStub = (x1, x2) => `<line class="stub" x1="${x1}" y1="20" x2="${x2}" y2="20"/>`;
+  switch (t) {
+    case "TRI":
+      return `<path class="body" d="M10,6L50,30L10,54Z"/><line class="stub" x1="0" y1="20" x2="10" y2="20"/><line class="stub" x1="0" y1="40" x2="10" y2="40"/><line class="stub" x1="50" y1="30" x2="60" y2="30"/><text class="pn" x="13" y="43">EN</text>`;
+    case "SWITCH":
+      return `<rect class="body" x="2" y="6" width="44" height="28" rx="7"/><rect x="9" y="14" width="30" height="12" rx="6" fill="${c.p.v ? "#bbf7d0" : "#e5e7eb"}"/><circle cx="${c.p.v ? 33 : 15}" cy="20" r="8" fill="${c.p.v ? "#16a34a" : "#6b7280"}"/>${outStub(46, 60)}`;
+    case "BUTTON":
+      return `<rect class="body" x="2" y="6" width="44" height="28" rx="7"/><circle cx="24" cy="20" r="9" fill="${st.down ? "#16a34a" : "#94a3b8"}" stroke="#334155" stroke-width="2"/>${outStub(46, 60)}`;
+    case "CLOCK":
+      return `<rect class="body" x="2" y="4" width="66" height="32" rx="7"/><polyline points="10,28 10,12 22,12 22,28 34,28 34,12 46,12 46,28" fill="none" stroke="#475569" stroke-width="2"/><circle cx="58" cy="20" r="5" fill="${st.lvl ? "#16a34a" : "#6b7280"}"/><text class="pn" x="35" y="50" text-anchor="middle">${c.p.hz > 0 ? c.p.hz + " Hz" : "manual (click)"}</text>${outStub(68, 80)}`;
+    case "HIGH": case "LOW":
+      return `<rect class="body" x="2" y="6" width="26" height="28" rx="6"/><text class="big" x="15" y="26" text-anchor="middle">${t === "HIGH" ? 1 : 0}</text>${outStub(28, 40)}`;
+    case "LED": {
+      const v = I[0], f = v === 1 ? "#ef4444" : v === 0 ? "#e5e7eb" : v === X ? "#fbbf24" : "#bfdbfe";
+      return `<line class="stub" x1="0" y1="20" x2="15" y2="20"/><circle cx="28" cy="20" r="13" fill="${f}" stroke="#111827" stroke-width="2"/>`;
+    }
+    case "SEG7": {
+      const sv = c.p.dec ? (() => { const n = num(I); return n < 0 ? Array(7).fill(X) : [...SEG[n]].map(Number); })() : I.slice(0, 7).map(v => v === Z ? 0 : v);
+      const R = [[6,0,28,6],[34,5,6,29],[34,38,6,29],[6,66,28,6],[0,38,6,29],[0,5,6,29],[6,33,28,6]];
+      let s = `<rect class="body" x="10" y="4" width="${g.w - 14}" height="${h - 8}" rx="6" fill="#111827"/><g transform="translate(28 ${h / 2 - 36})">`;
+      R.forEach((r, i) => { s += `<rect x="${r[0]}" y="${r[1]}" width="${r[2]}" height="${r[3]}" rx="2" fill="${sv[i] === 1 ? "#ef4444" : sv[i] === X ? "#fbbf24" : "#374151"}"/>`; });
+      s += "</g>";
+      g.ins.forEach(p => { s += `<line class="stub" x1="0" y1="${p.y}" x2="10" y2="${p.y}"/><text class="pn" x="13" y="${p.y + 3}" style="fill:#cbd5e1">${p.n}</text>`; });
+      return s;
+    }
+    case "HEX": {
+      const n = num(I), chr = n >= 0 ? HX[n] : I.includes(X) || !I.includes(Z) ? "X" : "Z";
+      let s = `<rect class="body" x="10" y="4" width="${g.w - 14}" height="${h - 8}" rx="6"/><text class="hexc" x="${g.w / 2 + 4}" y="${h / 2 + 12}" text-anchor="middle">${chr}</text>`;
+      g.ins.forEach(p => { s += `<line class="stub" x1="0" y1="${p.y}" x2="10" y2="${p.y}"/><text class="pn" x="13" y="${p.y + 3}">${p.n}</text>`; });
+      return s;
+    }
+  }
+  let s = `<rect class="body" x="10" y="4" width="${g.w - 20}" height="${h - 8}" rx="6"/>`;
+  const ci = CK[t];
+  g.ins.forEach((p, i) => { s += `<line class="stub" x1="0" y1="${p.y}" x2="10" y2="${p.y}"/><text class="pn" x="${i === ci ? 20 : 14}" y="${p.y + 3}">${p.n}</text>`; });
+  g.outs.forEach(p => { s += `<line class="stub" x1="${g.w - 10}" y1="${p.y}" x2="${g.w}" y2="${p.y}"/><text class="pn" x="${g.w - 14}" y="${p.y + 3}" text-anchor="end">${p.n}</text>`; });
+  if (ci !== undefined) {
+    const y = g.ins[ci].y;
+    s += `<path class="clk" d="M10,${y - 5}L17,${y}L10,${y + 5}"/>`;
+    if (c.p.edge === "fall") s += `<circle class="body" cx="5" cy="${y}" r="3"/>`;
+  }
+  s += `<text class="ttl" x="${g.w / 2}" y="${h / 2}" text-anchor="middle">${TITLE[t]}</text>`;
+  if (["SR", "DFF", "JFF", "TFF"].includes(t)) s += `<text class="pn" x="${g.w / 2}" y="${h / 2 + 13}" text-anchor="middle">Q=${ch(st.q)}</text>`;
+  if (t === "REG4" || t === "CNT4") { const n = num(st.q || [X]); s += `<text class="pn" x="${g.w / 2}" y="${h / 2 + 13}" text-anchor="middle">Q=${n < 0 ? "X" : HX[n]}</text>`; }
+  return s;
+}
+function pinSVG(id, i, d, p, v) {
+  return `<g class="pin" data-c="${id}" data-p="${i}" data-d="${d}"><circle cx="${p.x}" cy="${p.y}" r="3.5" fill="${col(v)}"/><circle class="ph" cx="${p.x}" cy="${p.y}" r="8"><title>${esc(p.n)} = ${ch(v)}</title></circle></g>`;
+}
+function compSVG(c) {
+  const g = layout(c), I = readIns(c, false), O = sim.out[c.id] || [];
+  let s = `<g data-comp="${c.id}" transform="translate(${c.x} ${c.y})"><rect class="hit" x="-2" y="-2" width="${g.w + 4}" height="${g.h + 4}"><title>${esc(nameOf(c))}</title></rect>`;
+  if (S.sel.has(c.id)) s += `<rect class="selbox" x="-6" y="-6" width="${g.w + 12}" height="${g.h + 12}" rx="8"/>`;
+  s += bodySVG(c, g, I);
+  if (c.p.label) s += `<text class="lbl" x="${g.w / 2}" y="-10" text-anchor="middle">${esc(c.p.label)}</text>`;
+  g.ins.forEach((p, i) => { s += pinSVG(c.id, i, "in", p, I[i]); });
+  g.outs.forEach((p, i) => { s += pinSVG(c.id, i, "out", p, O[i] === undefined ? X : O[i]); });
+  return s + "</g>";
+}
+function wireSVG(w) {
+  const a = idx.by.get(w.f[0]), b = idx.by.get(w.t[0]);
+  const [x1, y1] = pinPos(a, 1, w.f[1]), [x2, y2] = pinPos(b, 0, w.t[1]);
+  const v = (sim.out[a.id] || [])[w.f[1]];
+  const cls = sim.osc.has(a.id) || sim.cont.has(w.id) ? "wR" : v === 1 ? "w1" : v === 0 ? "w0" : v === Z ? "wZ" : "wX";
+  const d = route(x1, y1, x2, y2);
+  return `<g data-wire="${w.id}" class="${cls}${S.selW.has(w.id) ? " wsel" : ""}"><path class="wh" d="${d}"/><path class="wp" d="${d}"/></g>`;
+}
+function render() {
+  gw.innerHTML = M.wires.map(wireSVG).join("");
+  gc.innerHTML = M.comps.map(compSVG).join("");
+  updateUI();
+}
+function applyView() {
+  const v = S.view;
+  view.setAttribute("transform", `translate(${v.x} ${v.y}) scale(${v.k})`);
+  $("#grid").setAttribute("patternTransform", `translate(${v.x} ${v.y}) scale(${v.k})`);
+}
+let msgTimer = null;
+function setMsg(m) { S.msg = m; updateUI(); clearTimeout(msgTimer); msgTimer = setTimeout(() => { S.msg = ""; updateUI(); }, 5000); }
+function updateUI() {
+  $("#undo").disabled = H.i <= 0; $("#redo").disabled = H.i >= H.stack.length - 1;
+  $("#run").textContent = S.running ? "⏸ Pause" : "▶ Run"; $("#run").setAttribute("aria-pressed", String(S.running));
+  $("#wire").textContent = "Wires: " + (S.ortho ? "Orthogonal" : "Bezier");
+  $("#snap").textContent = "Snap: " + (S.snap ? "On" : "Off"); $("#snap").setAttribute("aria-pressed", String(S.snap));
+  $("#panBtn").textContent = "Pan tool: " + (S.pan ? "On" : "Off"); $("#panBtn").setAttribute("aria-pressed", String(S.pan));
+  const b = $("#banner"), names = ids => [...ids].map(i => idx.by.get(i)).filter(Boolean).map(nameOf).join(", ");
+  if (sim.osc.size) { b.textContent = "⚠ Zero-delay oscillation detected through: " + names(sim.osc) + ". Simulation halted; offending wires are red. Break the loop with a sequential element or edit the circuit."; b.classList.add("on"); }
+  else if (sim.cont.size) { b.textContent = "⚠ Bus contention: multiple drivers disagree on a net (red wires). Use tri-state buffers with exclusive enables."; b.classList.add("on"); }
+  else b.classList.remove("on");
+  $("#status").textContent = `${M.comps.length} components · ${M.wires.length} wires · ${S.running ? "clocks running" : "clocks paused"} · zoom ${Math.round(S.view.k * 100)}%` + (S.msg ? " · " + S.msg : "");
+}
+
+/* ============ properties panel & palette ============ */
+function buildProps() {
+  const c = single();
+  let h = "<h2>Properties</h2>";
+  if (c) {
+    const d = DEFS[c.type];
+    h += `<p class="pt">${esc(d.name.split(" (")[0])} <small>#${c.id}</small></p>`;
+    h += `<label>Label<input data-f="label" maxlength="24" value="${esc(c.p.label || "")}"></label>`;
+    if (GATES.includes(c.type)) h += `<label>Number of inputs<select data-f="n">${[2, 3, 4].map(n => `<option${c.p.n === n ? " selected" : ""}>${n}</option>`).join("")}</select></label>`;
+    if ("edge" in c.p) h += `<label>Clock edge<select data-f="edge"><option value="rise"${c.p.edge === "rise" ? " selected" : ""}>Rising ↑</option><option value="fall"${c.p.edge === "fall" ? " selected" : ""}>Falling ↓</option></select></label>`;
+    if (c.type === "CLOCK") h += `<label>Frequency in Hz (0 = manual, click it)<input type="number" data-f="hz" min="0" max="20" step="0.1" value="${c.p.hz}"></label>`;
+    if (c.type === "SEG7") h += `<label class="chk"><input type="checkbox" data-f="dec"${c.p.dec ? " checked" : ""}> Internal hex decoder (4 inputs)</label>`;
+    if ("edge" in c.p) h += `<p class="note">Unconnected RST / PRE read as 0. An unconnected counter EN reads as 1.</p>`;
+    if (c.type === "SR") h += `<p class="note">S=R=1 is invalid and gives X. The latch starts as X until set or reset.</p>`;
+    h += `<div class="btns"><button data-a="dup">Duplicate</button><button data-a="del">Delete</button></div>`;
+  } else if (S.sel.size > 1) {
+    h += `<p>${S.sel.size} components selected</p><div class="btns"><button data-a="dup">Duplicate</button><button data-a="del">Delete</button></div>`;
+  } else if (S.selW.size) {
+    h += `<p>${S.selW.size} wire(s) selected</p><div class="btns"><button data-a="del">Delete</button></div>`;
+  } else {
+    h += `<ul class="hint"><li>Click a component in the library, or drag it onto the canvas.</li><li>Drag from a pin to another pin to wire them.</li><li>Click a switch to toggle it; hold a push button to press it.</li><li>Drag empty space for box select; middle mouse, Alt or Space to pan; wheel to zoom.</li><li>Keys: Del, Ctrl+Z/Y, Ctrl+A/C/V/D, arrows to nudge.</li></ul>`;
+  }
+  $("#props").innerHTML = h;
+}
+$("#props").addEventListener("change", e => {
+  const f = e.target.dataset.f, c = single();
+  if (!f || !c) return;
+  let v = e.target.type === "checkbox" ? (e.target.checked ? 1 : 0) : e.target.value;
+  if (f === "n") v = +v;
+  if (f === "hz") v = Math.max(0, Math.min(20, +v || 0));
+  if (f === "label") v = String(v).slice(0, 24);
+  c.p[f] = v;
+  rebuild(); prune(); rebuild(); settle(); render(); buildProps(); commit();
+});
+$("#props").addEventListener("click", e => {
+  const a = e.target.dataset.a;
+  if (a === "del") del();
+  if (a === "dup") { copySel(); paste(); }
+});
+function buildPalette() {
+  let h = "", cat = "";
+  for (const [t, d] of Object.entries(DEFS)) {
+    if (d.cat !== cat) { cat = d.cat; h += `<h3>${esc(cat)}</h3>`; }
+    h += `<button class="pi" draggable="true" data-t="${t}">${esc(d.name)}</button>`;
+  }
+  h += `<div class="legend"><h3>Wire colours</h3><div><i style="background:#16a34a"></i>1 (high)</div><div><i style="background:#4b5563"></i>0 (low)</div><div><i style="background:#f59e0b"></i>X (unknown)</div><div><i style="background:#2563eb"></i>Z (high-Z)</div><div><i style="background:#dc2626"></i>Oscillation / contention</div></div>`;
+  h += `<p class="foot">© 2026 ${esc(LEGAL.owner)}. Released under the MIT License. All code and SVG symbols are original; no third-party libraries, fonts or network requests are used. Educational use only.</p>`;
+  $("#palette").innerHTML = h;
+}
+let addCount = 0;
+function addComp(type, x, y) {
+  const c = { id: M.nid++, type, x: snapV(x), y: snapV(y), p: JSON.parse(JSON.stringify(DEFS[type].p)) };
+  M.comps.push(c); ensureSim(c);
+  S.sel = new Set([c.id]); S.selW = new Set();
+  rebuild(); settle(); render(); buildProps(); commit();
+}
+const snapV = v => S.snap ? Math.round(v / GRID) * GRID : Math.round(v);
+$("#palette").addEventListener("click", e => {
+  const b = e.target.closest(".pi");
+  if (!b) return;
+  const r = cv.getBoundingClientRect(), off = (addCount++ % 6) * 20;
+  addComp(b.dataset.t, (r.width / 2 - S.view.x) / S.view.k - 30 + off, (r.height / 2 - S.view.y) / S.view.k - 30 + off);
+});
+$("#palette").addEventListener("dragstart", e => { const b = e.target.closest(".pi"); if (b) e.dataTransfer.setData("text/plain", "lf:" + b.dataset.t); });
+cv.addEventListener("dragover", e => e.preventDefault());
+cv.addEventListener("drop", e => {
+  e.preventDefault();
+  const d = e.dataTransfer.getData("text/plain");
+  if (d.startsWith("lf:") && Object.prototype.hasOwnProperty.call(DEFS, d.slice(3))) { const [x, y] = toWorld(e); addComp(d.slice(3), x - 30, y - 20); }
+});
+
+/* ============ editing operations ============ */
+let clip = null;
+function copySel() {
+  if (!S.sel.size) return;
+  clip = {
+    comps: M.comps.filter(c => S.sel.has(c.id)).map(c => JSON.parse(JSON.stringify(c))),
+    wires: M.wires.filter(w => S.sel.has(w.f[0]) && S.sel.has(w.t[0])).map(w => JSON.parse(JSON.stringify(w)))
+  };
+  setMsg(`Copied ${clip.comps.length} component(s).`);
+}
+function paste() {
+  if (!clip) return;
+  const map = new Map(), ns = new Set();
+  for (const c of clip.comps) { const n = JSON.parse(JSON.stringify(c)); n.id = M.nid++; n.x += 40; n.y += 40; map.set(c.id, n.id); M.comps.push(n); ns.add(n.id); }
+  for (const w of clip.wires) M.wires.push({ id: M.nid++, f: [map.get(w.f[0]), w.f[1]], t: [map.get(w.t[0]), w.t[1]] });
+  clip.comps.forEach(c => { c.x += 40; c.y += 40; });
+  S.sel = ns; S.selW = new Set();
+  rebuild(); settle(); render(); buildProps(); commit();
+}
+function del() {
+  if (!S.sel.size && !S.selW.size) return;
+  const ids = S.sel, ws = S.selW;
+  M.comps = M.comps.filter(c => !ids.has(c.id));
+  M.wires = M.wires.filter(w => !ws.has(w.id) && !ids.has(w.f[0]) && !ids.has(w.t[0]));
+  S.sel = new Set(); S.selW = new Set();
+  rebuild(); settle(); render(); buildProps(); commit();
+}
+function selectAll() { S.sel = new Set(M.comps.map(c => c.id)); S.selW = new Set(); render(); buildProps(); }
+function nudge(dx, dy) {
+  if (!S.sel.size) return;
+  M.comps.forEach(c => { if (S.sel.has(c.id)) { c.x += dx; c.y += dy; } });
+  render(); commit();
+}
+function fit() {
+  const r = cv.getBoundingClientRect();
+  if (!M.comps.length) { S.view = { x: 40, y: 40, k: 1 }; applyView(); updateUI(); return; }
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  for (const c of M.comps) { const g = layout(c); x0 = Math.min(x0, c.x); y0 = Math.min(y0, c.y - 16); x1 = Math.max(x1, c.x + g.w); y1 = Math.max(y1, c.y + g.h + 16); }
+  const k = Math.min(2, Math.max(0.2, Math.min((r.width - 80) / (x1 - x0), (r.height - 80) / (y1 - y0))));
+  S.view = { k, x: (r.width - (x1 - x0) * k) / 2 - x0 * k, y: (r.height - (y1 - y0) * k) / 2 - y0 * k };
+  applyView(); updateUI();
+}
+
+/* ============ pointer interaction ============ */
+let drag = null, spaceDown = false;
+function toWorld(e) { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left - S.view.x) / S.view.k, (e.clientY - r.top - S.view.y) / S.view.k]; }
+
+cv.addEventListener("pointerdown", e => {
+  if (e.button === 2) return;
+  cv.focus({ preventScroll: true });
+  if (e.button === 1 || S.pan || spaceDown || e.altKey) { drag = { t: "pan", sx: e.clientX, sy: e.clientY, vx: S.view.x, vy: S.view.y }; e.preventDefault(); return; }
+  const pin = e.target.closest(".pin");
+  if (pin) { drag = { t: "wire", c: +pin.dataset.c, p: +pin.dataset.p, d: pin.dataset.d }; e.preventDefault(); return; }
+  const ce = e.target.closest("[data-comp]");
+  if (ce) {
+    const id = +ce.dataset.comp, c = idx.by.get(id);
+    if (e.shiftKey) { S.sel.has(id) ? S.sel.delete(id) : S.sel.add(id); }
+    else if (!S.sel.has(id)) { S.sel.clear(); S.selW.clear(); S.sel.add(id); }
+    const btn = c.type === "BUTTON" && !e.shiftKey;
+    if (btn) { sim.st[id].down = 1; settle(); }
+    const [wx, wy] = toWorld(e);
+    drag = { t: "move", id, btn, cx: e.clientX, cy: e.clientY, sx: wx, sy: wy, moved: false, orig: [...S.sel].map(i => { const o = idx.by.get(i); return [o, o.x, o.y]; }) };
+    render(); buildProps(); return;
+  }
+  const we = e.target.closest("[data-wire]");
+  if (we) {
+    const id = +we.dataset.wire;
+    if (!e.shiftKey) { S.sel.clear(); S.selW.clear(); }
+    if (e.shiftKey && S.selW.has(id)) S.selW.delete(id); else S.selW.add(id);
+    render(); buildProps(); return;
+  }
+  const [wx, wy] = toWorld(e);
+  if (!e.shiftKey) { S.sel.clear(); S.selW.clear(); }
+  drag = { t: "box", x0: wx, y0: wy, x1: wx, y1: wy };
+  render(); buildProps();
+});
+window.addEventListener("pointermove", e => {
+  if (!drag) return;
+  if (drag.t === "pan") { S.view.x = drag.vx + e.clientX - drag.sx; S.view.y = drag.vy + e.clientY - drag.sy; applyView(); }
+  else if (drag.t === "move") {
+    if (!drag.moved) {
+      if (Math.hypot(e.clientX - drag.cx, e.clientY - drag.cy) < 4) return;
+      drag.moved = true;
+      if (drag.btn) { sim.st[drag.id].down = 0; drag.btn = false; settle(); }
+    }
+    const [wx, wy] = toWorld(e);
+    let dx = wx - drag.sx, dy = wy - drag.sy;
+    if (S.snap) { dx = Math.round(dx / GRID) * GRID; dy = Math.round(dy / GRID) * GRID; }
+    for (const [o, ox, oy] of drag.orig) { o.x = ox + dx; o.y = oy + dy; }
+    render();
+  } else if (drag.t === "wire") {
+    const [wx, wy] = toWorld(e), c = idx.by.get(drag.c);
+    const [px, py] = pinPos(c, drag.d === "out" ? 1 : 0, drag.p);
+    go.innerHTML = `<path class="wprev" d="${drag.d === "out" ? route(px, py, wx, wy) : route(wx, wy, px, py)}"/>`;
+  } else if (drag.t === "box") {
+    const [wx, wy] = toWorld(e); drag.x1 = wx; drag.y1 = wy;
+    go.innerHTML = `<rect class="rb" x="${Math.min(drag.x0, wx)}" y="${Math.min(drag.y0, wy)}" width="${Math.abs(wx - drag.x0)}" height="${Math.abs(wy - drag.y0)}"/>`;
+  }
+});
+window.addEventListener("pointerup", e => {
+  if (!drag) return;
+  const d = drag; drag = null; go.innerHTML = "";
+  if (d.t === "move") {
+    if (d.moved) commit();
+    else {
+      const c = idx.by.get(d.id), st = sim.st[d.id];
+      if (d.btn) st.down = 0;
+      else if (c && !e.shiftKey) {
+        if (c.type === "SWITCH") { c.p.v = c.p.v ? 0 : 1; save(); }
+        else if (c.type === "CLOCK") st.lvl ^= 1;
+      }
+      settle(); render();
+    }
+  } else if (d.t === "wire") {
+    const el = document.elementFromPoint(e.clientX, e.clientY), pin = el && el.closest ? el.closest(".pin") : null;
+    if (!pin) return;
+    if (pin.dataset.d === d.d) { if (+pin.dataset.c !== d.c || +pin.dataset.p !== d.p) setMsg("Connect an output pin to an input pin."); return; }
+    const o = d.d === "out" ? [d.c, d.p] : [+pin.dataset.c, +pin.dataset.p];
+    const i = d.d === "out" ? [+pin.dataset.c, +pin.dataset.p] : [d.c, d.p];
+    if (M.wires.some(w => w.f[0] === o[0] && w.f[1] === o[1] && w.t[0] === i[0] && w.t[1] === i[1])) { setMsg("Those pins are already connected."); return; }
+    M.wires.push({ id: M.nid++, f: o, t: i });
+    rebuild(); settle(); render(); commit();
+  } else if (d.t === "box") {
+    const x0 = Math.min(d.x0, d.x1), x1 = Math.max(d.x0, d.x1), y0 = Math.min(d.y0, d.y1), y1 = Math.max(d.y0, d.y1);
+    for (const c of M.comps) { const g = layout(c); if (c.x < x1 && c.x + g.w > x0 && c.y < y1 && c.y + g.h > y0) S.sel.add(c.id); }
+    render(); buildProps();
+  }
+});
+window.addEventListener("pointercancel", () => { if (drag) { drag = null; go.innerHTML = ""; settle(); render(); } });
+cv.addEventListener("wheel", e => {
+  e.preventDefault();
+  const r = cv.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top, k0 = S.view.k;
+  const k = Math.min(3, Math.max(0.2, k0 * Math.exp(-e.deltaY * 0.0015)));
+  S.view.x = mx - (mx - S.view.x) * (k / k0); S.view.y = my - (my - S.view.y) * (k / k0); S.view.k = k;
+  applyView(); updateUI();
+}, { passive: false });
+cv.addEventListener("contextmenu", e => e.preventDefault());
+
+/* ============ keyboard & toolbar ============ */
+const legalOpen = () => $("#legal").classList.contains("on");
+window.addEventListener("keydown", e => {
+  if (legalOpen()) return;
+  const tag = (e.target.tagName || "").toLowerCase();
+  if (tag === "input" || tag === "select" || tag === "textarea") return;
+  const k = e.key.toLowerCase(), mod = e.ctrlKey || e.metaKey;
+  if (e.key === " " && tag !== "button") { spaceDown = true; e.preventDefault(); return; }
+  if (mod && k === "z") { e.preventDefault(); e.shiftKey ? redo() : undo(); }
+  else if (mod && k === "y") { e.preventDefault(); redo(); }
+  else if (mod && k === "a") { e.preventDefault(); selectAll(); }
+  else if (mod && k === "c") { copySel(); }
+  else if (mod && k === "v") { paste(); }
+  else if (mod && k === "d") { e.preventDefault(); copySel(); paste(); }
+  else if (e.key === "Delete" || e.key === "Backspace") { if (tag !== "button") { e.preventDefault(); del(); } }
+  else if (e.key === "Escape") { S.sel.clear(); S.selW.clear(); render(); buildProps(); }
+  else if (e.key.startsWith("Arrow") && tag !== "button") {
+    e.preventDefault();
+    nudge(e.key === "ArrowLeft" ? -GRID : e.key === "ArrowRight" ? GRID : 0, e.key === "ArrowUp" ? -GRID : e.key === "ArrowDown" ? GRID : 0);
+  }
+});
+window.addEventListener("keyup", e => { if (e.key === " ") spaceDown = false; });
+$("#undo").onclick = undo; $("#redo").onclick = redo;
+$("#run").onclick = () => S.running ? stopRun() : startRun();
+$("#step").onclick = stepHalf; $("#reset").onclick = resetSim;
+$("#wire").onclick = () => { S.ortho = !S.ortho; render(); };
+$("#snap").onclick = () => { S.snap = !S.snap; updateUI(); };
+$("#panBtn").onclick = () => { S.pan = !S.pan; cv.style.cursor = S.pan ? "grab" : ""; updateUI(); };
+$("#fit").onclick = fit; $("#del").onclick = del;
+$("#clear").onclick = () => {
+  if (!M.comps.length || !confirm("Clear the whole workspace? You can still undo this.")) return;
+  M = { comps: [], wires: [], nid: 1 }; S.sel.clear(); S.selW.clear();
+  sim.out = {}; sim.st = {}; sim.prev = {};
+  rebuild(); settle(); render(); buildProps(); commit();
+};
+
+/* ============ legal center ============ */
+const L = () => ({ o: esc(LEGAL.owner), e: esc(LEGAL.email), c: esc(LEGAL.court), s: esc(LEGAL.site), u: esc(LEGAL.updated) });
+const MIT = l => `Copyright (c) 2026 ${LEGAL.owner}
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.`;
+
+const TABS = [
+  ["terms", "Terms of Use", l => `
+    <h3>Terms of Use</h3><p class="upd">Last updated: ${l.u}</p>
+    <p><strong>1. Acceptance.</strong> By using ${l.s} (the “Site”) you agree to these Terms, the Disclaimer and the Privacy Notice. If you do not agree, do not use the Site.</p>
+    <p><strong>2. What the Site is.</strong> A free, browser-based educational tool for experimenting with digital logic. It is operated by ${l.o} (the “Operator”). It is not affiliated with, endorsed by, or sponsored by any university, company or institution.</p>
+    <p><strong>3. Licence to use.</strong> The Operator grants you a non-exclusive, revocable, free licence to use the Site for personal, educational and non-commercial or commercial experimentation. The source code is licensed under the MIT License (see “Copyright &amp; License”).</p>
+    <p><strong>4. Your content.</strong> Circuits you build stay in your browser. You are responsible for what you create and for keeping your own backups. The Operator claims no ownership of your circuits.</p>
+    <p><strong>5. Acceptable use.</strong> Do not attempt to disrupt, overload, reverse-engineer for malicious purposes, or misuse the Site; do not use it to infringe the rights of others or to break any law.</p>
+    <p><strong>6. No warranty.</strong> The Site is provided “as is” and “as available”, without warranties of any kind, express or implied, including accuracy, fitness for a particular purpose, availability, or non-infringement.</p>
+    <p><strong>7. Limitation of liability.</strong> To the maximum extent permitted by law, the Operator is not liable for any direct, indirect, incidental, special or consequential damage, loss of data, loss of profit or any other loss arising from the use of, or inability to use, the Site. Nothing in these Terms excludes or limits liability that cannot be excluded or limited under Israeli law.</p>
+    <p><strong>8. Indemnity for misuse.</strong> If you use the Site in breach of these Terms, you agree, to the extent permitted by law, to be responsible for resulting claims by third parties against the Operator.</p>
+    <p><strong>9. Changes and availability.</strong> The Operator may change, suspend or discontinue the Site, or update these Terms, at any time. Continued use after an update means you accept it.</p>
+    <p><strong>10. Governing law and jurisdiction.</strong> These Terms are governed by the laws of the State of Israel, without regard to conflict-of-law rules. The competent courts of ${l.c}, Israel have exclusive jurisdiction, subject to any mandatory rights you have under law.</p>
+    <p><strong>11. General.</strong> If any provision is held unenforceable, the rest remains in effect. These Terms are the entire agreement regarding the Site. Contact: ${l.e}.</p>`],
+  ["disclaimer", "Disclaimer", l => `
+    <h3>Educational-use disclaimer</h3>
+    <p class="box"><strong>Do not use this Site for safety-critical, medical, aviation, automotive, industrial, financial or any other high-risk design or decision.</strong></p>
+    <ul>
+      <li>The simulator is a simplified teaching model: zero-delay logic, no propagation delays, glitches, setup/hold timing, metastability, analog or power effects.</li>
+      <li>Results, wire colours, oscillation and contention warnings are indicative only and may differ from real hardware or other tools.</li>
+      <li>The Site may contain bugs. Verify any design with professional tools and qualified engineers before relying on it.</li>
+      <li>Nothing here is professional engineering, legal or other advice.</li>
+      <li>The component symbols are generic illustrations and do not represent any manufacturer’s product.</li>
+    </ul>
+    <p>You use the Site at your own risk, subject to the limits in the Terms of Use.</p>`],
+  ["privacy", "Privacy Notice", l => `
+    <h3>Privacy Notice</h3><p class="upd">Last updated: ${l.u}</p>
+    <p><strong>Summary:</strong> the Site does not collect, send or sell your personal information.</p>
+    <ul>
+      <li><strong>No accounts, no forms, no tracking.</strong> The Site has no analytics, advertising, cookies, or third-party scripts, fonts or requests. A Content-Security-Policy in the page blocks outside connections.</li>
+      <li><strong>Local storage only.</strong> Your circuit and your acceptance of the Terms (date and version) are saved in your browser’s <code>localStorage</code> on your device so the work is there next time. It is never transmitted by the Site.</li>
+      <li><strong>Hosting logs.</strong> The web host serving this page may automatically log technical data such as IP address and request time under its own policy. The Operator does not use this data to identify visitors.</li>
+      <li><strong>Please do not type personal or sensitive information</strong> into component labels.</li>
+      <li><strong>Children.</strong> The Site is not directed at children under 13 and does not knowingly collect their data.</li>
+      <li><strong>Your control.</strong> You can delete everything the Site stored using the button below, or by clearing the site data in your browser.</li>
+      <li><strong>Law.</strong> This notice is written with the Israeli Protection of Privacy Law, 5741-1981 in mind. Questions or requests: ${l.e}.</li>
+    </ul>
+    <p><button class="danger" id="wipeData">Delete all my local data from this site</button></p>`],
+  ["copyright", "Copyright & License", l => `
+    <h3>Copyright and Open-Source License</h3>
+    <p>© 2026 ${l.o}. Released under the MIT License, reproduced below.</p>
+    <pre>${esc(MIT())}</pre>
+    <p><strong>Original work.</strong> The source code and all SVG logic symbols and icons on this Site were written from scratch for this project. No third-party code, images, icons or fonts are included. The symbols are drawn in the general style of common textbook conventions; no standards document text or figures are reproduced.</p>
+    <p><strong>Trademarks.</strong> Any product, company or tool names mentioned (for example in documentation or file formats) belong to their respective owners. Their use is for identification only and implies no affiliation or endorsement. ${l.s} is a working name; no claim to a registered trademark is made.</p>`],
+  ["third", "Third-Party Notices", l => `
+    <h3>Open-Source Attributions &amp; Third-Party Notices</h3>
+    <p>This Site uses <strong>no third-party libraries, frameworks, fonts, icons, images or network services</strong>.</p>
+    <ul>
+      <li>It relies only on standard features built into your web browser (HTML, CSS, SVG, JavaScript, <code>localStorage</code>).</li>
+      <li>System fonts are provided by your own operating system and are not distributed by this Site.</li>
+    </ul>
+    <p>If third-party components are added in the future, each will be listed here with its name, version, copyright holder and licence (MIT, Apache-2.0 or BSD only).</p>`],
+  ["access", "Accessibility", l => `
+    <h3>Accessibility Statement</h3>
+    <p>The Operator aims to make the Site usable by as many people as possible, in the spirit of Israeli accessibility requirements and WCAG guidelines.</p>
+    <ul>
+      <li>Menus, dialogs and toolbars work with a keyboard and show visible focus; the Escape key closes dialogs.</li>
+      <li>Canvas shortcuts: Delete, Ctrl+Z / Ctrl+Y, Ctrl+A / C / V / D, arrow keys to nudge, Space or Alt to pan, wheel to zoom.</li>
+      <li>Wire colours are accompanied by pin value tooltips so state is not conveyed by colour alone.</li>
+    </ul>
+    <p><strong>Known limitations.</strong> The Site has not been independently audited and may not fully meet every requirement. Drawing wires and positioning parts on the canvas currently needs a pointing device and is not fully screen-reader accessible.</p>
+    <p><strong>Request help or report a problem:</strong> ${l.e}. Please describe the issue and the assistive technology you use; the Operator will try to respond within a reasonable time.</p>`],
+  ["contact", "Contact & Takedown", l => `
+    <h3>Contact, Copyright Complaints and Takedown</h3>
+    <p>Operator: ${l.o}. Email: ${l.e}.</p>
+    <p>If you believe material on the Site infringes your rights (for example under the Israeli Copyright Law, 2007), send a notice that includes:</p>
+    <ul>
+      <li>your name and contact details;</li>
+      <li>a description of the work you own and where it appears on the Site;</li>
+      <li>a statement that the use is not authorised by you, the law or the rights holder;</li>
+      <li>a statement, made in good faith, that the information is accurate and that you are the rights holder or authorised to act for them.</li>
+    </ul>
+    <p>The Operator will review notices in good faith and may remove or fix the material promptly. Please contact the Operator first so the issue can be resolved quickly. Legal notices may be served on the Operator at the email address above.</p>`]
+];
+
+let lastFocus = null, curTab = "terms";
+function showTab(id) {
+  curTab = id;
+  const l = L();
+  $("#legalTabs").innerHTML = TABS.map(([k, n]) => `<button role="tab" id="tab-${k}" data-tab="${k}" aria-selected="${k === id}" aria-controls="legalPane" tabindex="${k === id ? 0 : -1}"${k === id ? ' aria-pressed="true"' : ""}>${esc(n)}</button>`).join("");
+  const t = TABS.find(x => x[0] === id) || TABS[0];
+  $("#legalPane").innerHTML = t[2](l);
+  $("#legalPane").setAttribute("aria-labelledby", "tab-" + t[0]);
+  $("#legalPane").scrollTop = 0;
+}
+function openLegal(id) {
+  lastFocus = document.activeElement;
+  showTab(TABS.some(t => t[0] === id) ? id : "terms");
+  $("#legal").classList.add("on");
+  $("#tab-" + curTab).focus();
+}
+function closeLegal() {
+  $("#legal").classList.remove("on");
+  if (lastFocus && lastFocus.focus) lastFocus.focus();
+}
+function hasConsent() { try { const c = JSON.parse(localStorage.getItem(CKEY)); return !!c && c.v === LEGAL.version; } catch (_) { return false; } }
+function acceptTerms() {
+  try { localStorage.setItem(CKEY, JSON.stringify({ v: LEGAL.version, at: new Date().toISOString() })); } catch (_) { /* storage unavailable */ }
+  $("#consent").classList.remove("on");
+}
+function wipeData() {
+  if (!confirm("Delete your saved circuit and your terms acceptance from this browser? This cannot be undone.")) return;
+  try { localStorage.removeItem(KEY); localStorage.removeItem(CKEY); } catch (_) { /* ignore */ }
+  stopRun(); location.reload();
+}
+function initLegal() {
+  $("#flinks").innerHTML = TABS.map(([k, n]) => `<button class="lk" data-l="${k}">${esc(n)}</button>`).join("") + `<span>© 2026 ${esc(LEGAL.owner)} · MIT License</span>`;
+  document.addEventListener("click", e => {
+    const b = e.target.closest("[data-l]");
+    if (b) openLegal(b.dataset.l);
+    const t = e.target.closest("[data-tab]");
+    if (t) { showTab(t.dataset.tab); $("#tab-" + curTab).focus(); }
+    if (e.target.id === "wipeData") wipeData();
+    if (e.target === $("#legal")) closeLegal();
+  });
+  $("#legalBtn").onclick = () => openLegal("terms");
+  $("#legalClose").onclick = closeLegal;
+  $("#consentOk").onclick = acceptTerms;
+  document.addEventListener("keydown", e => {
+    if (!legalOpen()) return;
+    if (e.key === "Escape") { e.preventDefault(); closeLegal(); return; }
+    if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+      const t = e.target.closest && e.target.closest("[data-tab]");
+      if (t) {
+        e.preventDefault();
+        const i = TABS.findIndex(x => x[0] === curTab), n = (i + (e.key === "ArrowRight" ? 1 : TABS.length - 1)) % TABS.length;
+        showTab(TABS[n][0]); $("#tab-" + curTab).focus();
+      }
+      return;
+    }
+    if (e.key === "Tab") {
+      const f = [...$("#legal").querySelectorAll("button, [tabindex='0']")].filter(x => !x.disabled && x.offsetParent !== null);
+      if (!f.length) return;
+      const first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  });
+  if (!hasConsent()) $("#consent").classList.add("on");
+}
+
+/* ============ start-up ============ */
+M = loadSaved() || demo();
+buildPalette(); initLegal(); rebuild(); settle(); applyView(); render(); buildProps(); commit();
+</script>
+</body>
+</html>
